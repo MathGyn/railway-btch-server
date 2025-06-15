@@ -37,13 +37,13 @@ app.post('/metadata', async (req, res) => {
 
     switch (platform) {
       case 'instagram':
-        result = await btch.instagram(url);
+        result = await btch.igdl(url);
         break;
       case 'tiktok':
-        result = await btch.tiktok(url);
+        result = await btch.ttdl(url);
         break;
       case 'facebook':
-        result = await btch.facebook(url);
+        result = await btch.fbdown(url);
         break;
       case 'youtube':
         result = await btch.youtube(url);
@@ -55,10 +55,18 @@ app.post('/metadata', async (req, res) => {
         });
     }
 
-    if (!result || !result.title) {
+    if (!result) {
       return res.status(400).json({
         success: false,
-        error: 'Não foi possível obter metadados deste conteúdo'
+        error: 'Não foi possível obter metadados deste conteúdo. Servidor indisponível.'
+      });
+    }
+
+    // Handle different response formats from btch-downloader
+    if (typeof result === 'string') {
+      return res.status(400).json({
+        success: false,
+        error: result.includes('401') ? 'Conteúdo privado ou protegido' : 'Erro ao processar conteúdo'
       });
     }
 
@@ -81,9 +89,21 @@ app.post('/metadata', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Metadata error:', error.message);
+    
+    let errorMessage = 'Erro interno do servidor';
+    if (error.message.includes('522')) {
+      errorMessage = 'Serviços de download temporariamente indisponíveis. Tente novamente em alguns minutos.';
+    } else if (error.message.includes('401')) {
+      errorMessage = 'Conteúdo privado ou não disponível para download';
+    } else if (error.message.includes('timeout')) {
+      errorMessage = 'Timeout ao processar conteúdo. Tente novamente.';
+    } else if (error.message.includes('Request Failed')) {
+      errorMessage = 'Falha na requisição. Verifique se a URL está correta.';
+    }
+    
     res.status(500).json({
       success: false,
-      error: `Erro ao obter metadados: ${error.message}`
+      error: errorMessage
     });
   }
 });
@@ -106,13 +126,13 @@ app.post('/download', async (req, res) => {
 
     switch (platform) {
       case 'instagram':
-        result = await btch.instagram(url);
+        result = await btch.igdl(url);
         break;
       case 'tiktok':
-        result = await btch.tiktok(url);
+        result = await btch.ttdl(url);
         break;
       case 'facebook':
-        result = await btch.facebook(url);
+        result = await btch.fbdown(url);
         break;
       case 'youtube':
         result = await btch.youtube(url);
@@ -171,9 +191,21 @@ app.post('/download', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Download error:', error.message);
+    
+    let errorMessage = 'Erro interno do servidor';
+    if (error.message.includes('522')) {
+      errorMessage = 'Serviços de download temporariamente indisponíveis. Tente novamente em alguns minutos.';
+    } else if (error.message.includes('401')) {
+      errorMessage = 'Conteúdo privado ou não disponível para download';
+    } else if (error.message.includes('timeout')) {
+      errorMessage = 'Timeout ao processar conteúdo. Tente novamente.';
+    } else if (error.message.includes('Request Failed')) {
+      errorMessage = 'Falha na requisição. Verifique se a URL está correta.';
+    }
+    
     res.status(500).json({
       success: false,
-      error: `Erro ao baixar: ${error.message}`
+      error: errorMessage
     });
   }
 });
