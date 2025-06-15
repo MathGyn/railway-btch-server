@@ -1,18 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const { RateLimiterMemory } = require('rate-limiter-flexible');
 const btch = require('btch-downloader');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-
-// Rate limiting
-const rateLimiter = new RateLimiterMemory({
-  keyType: 'ip',
-  points: 15, // 15 requests
-  duration: 60, // per 60 seconds
-});
 
 // Middleware
 app.use(helmet());
@@ -21,20 +13,6 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
-
-// Rate limiting middleware
-app.use(async (req, res, next) => {
-  try {
-    await rateLimiter.consume(req.ip);
-    next();
-  } catch (rejRes) {
-    res.status(429).json({
-      success: false,
-      error: 'Too many requests. Please try again later.',
-      retryAfter: Math.round(rejRes.msBeforeNext / 1000) || 1,
-    });
-  }
-});
 
 // Logging middleware
 app.use((req, res, next) => {

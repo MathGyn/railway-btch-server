@@ -1,35 +1,35 @@
-# Use Node.js 18 with Alpine Linux for smaller, faster image
-FROM node:18-alpine
+# Use Node.js 18 with Debian (more compatible than Alpine)
+FROM node:18
 
-# Install basic system dependencies
-RUN apk add --no-cache \
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
     curl \
-    && rm -rf /var/cache/apk/*
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files first
 COPY package*.json ./
 
-# Install Node.js dependencies
-RUN npm install --production && npm cache clean --force
+# Install Node.js dependencies with verbose output
+RUN npm install --production --verbose || (echo "npm install failed" && exit 1)
+
+# Clean npm cache
+RUN npm cache clean --force
 
 # Copy application code
 COPY . .
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
-
-# Change ownership of the app directory
+RUN useradd -m -u 1001 nodejs
 RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 # Expose port (Railway uses PORT env var)
 EXPOSE $PORT
 
-# Health check - use PORT environment variable
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:${PORT:-3001}/health || exit 1
 
